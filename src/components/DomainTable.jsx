@@ -1,92 +1,113 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { getAllHostedZoneRecord } from '../service/hostedZone';
+import { useParams } from 'react-router-dom';
+import { tableColumn } from '../utils/constant';
+import { MdDelete, MdEdit } from "react-icons/md";
+import Modal from './Modal'; // Import your Modal component
+import DNSRecordForm from './DNSRecordForm';
+import './DomainTable.css';
 
 const DomainTable = () => {
-  const [domains, setDomains] = useState([]);
-  const navigate = useNavigate();
-
-  // Simulated data for demonstration
-  const mockDomains = [
-    { 
-      id: 1, 
-      name: 'example.com', 
-      records: [
-        { type: 'A', value: '192.168.0.1', ttl: 3600 },
-        { type: 'MX', value: 'mail.example.com', ttl: 3600 },
-        { type: 'CNAME', value: 'www.example.com', ttl: 3600 },
-      ]
-    },
-    { 
-      id: 2, 
-      name: 'sub.example.com', 
-      records: [
-        { type: 'A', value: '192.168.0.2', ttl: 3600 },
-        { type: 'CNAME', value: 'subdomain.example.com', ttl: 3600 },
-      ]
-    }
-  ];
-
-  const modifyDNS = (domain) => {
-    const pathname = `/edit/${domain.id}`
-    navigate(pathname, { state: domain });
-  }
+  const [domainRecords, setDomainRecords] = useState([]);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedRecord, setSelectedRecord] = useState(null);
+  const params = useParams();
 
   useEffect(() => {
-    // Simulate fetching data from backend
-    setDomains(mockDomains);
-  }, []);
+    // Simulating fetching data from API
+    const fetchData = async () => {
+      try {
+        // const response = await getAllHostedZoneRecord(params.zoneId);
+        // setDomainRecords(response);
+        setDomainRecords([
+          {
+            "Name": "hllowan2gulab.com.",
+            "Type": "NS",
+            "TTL": 172800,
+            "ResourceRecords": [
+              { "Value": "ns-154.awsdns-19.com." },
+              { "Value": "ns-1009.awsdns-62.net." },
+              { "Value": "ns-1369.awsdns-43.org." },
+              { "Value": "ns-1979.awsdns-55.co.uk." }
+            ]
+          },
+          {
+            "Name": "hllowan2gulab.com.",
+            "Type": "SOA",
+            "TTL": 900,
+            "ResourceRecords": [
+              { "Value": "ns-154.awsdns-19.com. awsdns-hostmaster.amazon.com. 1 7200 900 1209600 86400" }
+            ]
+          }
+        ]);
+      } catch (error) {
+        console.error('Error fetching domain records:', error);
+      }
+    };
+
+    fetchData();
+  }, [params.zoneId]);
+
+  const modifyDNS = (record) => {
+    setSelectedRecord([record]);
+    setModalOpen(true);
+  };
+
+  const handleModalClose = () => {
+    setModalOpen(false);
+    setSelectedRecord(null);
+  };
 
   return (
-    <div className="my-8">
-      <h2 className="text-xl font-semibold mb-4">Domains</h2>
-      <table className="w-full border-collapse border border-gray-300">
+    <div className="overflow-x-auto">
+      <table className="w-full table-auto border-collapse">
         <thead>
-          <tr className="bg-gray-100">
-            <th className="border border-gray-300 px-4 py-2">Domain Name</th>
-            <th className="border border-gray-300 px-4 py-2" colSpan="3">Records</th>
-            <th className="border border-gray-300 px-4 py-2">Actions</th>
-          </tr>
-          <tr className="bg-gray-100">
-            <th className="border border-gray-300 px-4 py-2"></th>
-            <th className="border border-gray-300 px-4 py-2">Type</th>
-            <th className="border border-gray-300 px-4 py-2">Value</th>
-            <th className="border border-gray-300 px-4 py-2">TTL</th>
-            <th className="border border-gray-300 px-4 py-2"></th>
+          <tr className="bg-gray-200">
+            {Object.values(tableColumn.hostedZoneRecords).map((columnName, index) => (
+              <th key={index} className="px-4 py-2 text-left">{columnName}</th>
+            ))}
           </tr>
         </thead>
         <tbody>
-          {domains.map((domain) => (
-            <tr key={domain.id} className="bg-white">
-              <td className="border border-gray-300 px-4 py-2">{domain.name}</td>
-              <td className="border border-gray-300 px-4 py-2">
-                {domain.records.map((record, index) => (
-                  <div key={index} className={index === domain.records.length - 1 ? "border-gray-300 py-2" : "border-b border-gray-300 py-2"}>
-                    <div>{record.type}</div>
-                  </div>
-                ))}
-              </td>
-              <td className="border border-gray-300 px-4 py-2">
-                {domain.records.map((record, index) => (
-                  <div key={index} className={index === domain.records.length - 1 ? "border-gray-300 py-2" : "border-b border-gray-300 py-2"}>
-                    <div>{record.value}</div>
-                  </div>
-                ))}
-              </td>
-              <td className="border border-gray-300 px-4 py-2">
-                {domain.records.map((record, index) => (
-                  <div key={index} className={index === domain.records.length - 1 ? "border-gray-300 py-2" : "border-b border-gray-300 py-2"}>
-                    <div>{record.ttl}</div>
-                  </div>
-                ))}
-              </td>
-              <td className="border border-gray-300 px-4 py-2">
-                <span className='text-blue-500 hover:underline' onClick={() => modifyDNS(domain)}>Edit</span> /
-                <button className="text-red-500 hover:underline"> Delete</button>
-              </td>
+          {domainRecords.length === 0 ? (
+            <tr>
+              <td colSpan="11" className="text-center">No data available</td>
             </tr>
-          ))}
+          ) : (
+            domainRecords.map((record, index) => (
+              <tr key={index} className={index % 2 === 0 ? 'bg-gray-100' : ''}>
+                <td className="px-4 py-2">{record.Name}</td>
+                <td className="px-4 py-2">{record.Type}</td>
+                <td className="px-4 py-2">-</td>
+                <td className="px-4 py-2">-</td>
+                <td className="px-4 py-2">-</td>
+                <td className="px-4 py-2">{record.ResourceRecords.map((rr, index) => <span key={index}>{rr.Value}<br /></span>)}</td>
+                <td className="px-4 py-2">{record.TTL}</td>
+                <td className="px-4 py-2">-</td>
+                <td className="px-4 py-2">-</td>
+                <td className="px-4 py-2">-</td>
+                <td className="px-4 py-2 flex items-center justify-between">
+                  <button onClick={() => modifyDNS(record)} className="text-blue-500 px-4 py-1 hover:text-blue-700 hover:bg-blue-100 rounded-full mr-2">
+                    <div className="flex items-center">
+                      <MdEdit />
+                      <span className="ml-1">Edit</span>
+                    </div>
+                  </button>
+                  <button className="text-red-500 hover:text-red-700 hover:bg-red-100 px-2 py-1 rounded-full">
+                    <div className="flex items-center">
+                      <MdDelete />
+                      <span className="ml-1">Delete</span>
+                    </div>
+                  </button>
+                </td>
+              </tr>
+            ))
+          )}
         </tbody>
       </table>
+      <Modal isOpen={modalOpen} onClose={handleModalClose}>
+        <DNSRecordForm selectedFormData={selectedRecord} closeModal={handleModalClose} />
+      </Modal>
     </div>
   );
 };

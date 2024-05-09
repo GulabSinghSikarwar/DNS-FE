@@ -1,97 +1,111 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { FiX } from 'react-icons/fi'; // Import FiX icon
+import './DNSForm.css'; // Import CSS file
+import DropdownDivider from '../utils/DropDown'; // Import DropdownDivider component
 
-const DNSRecordForm = () => {
-  const [formData, setFormData] = useState({
-    domain: '',
-    records: [{ type: '', value: '', ttl: '' }] // Initialize with a single record entry
-  });
-  const [mode, setMode] = useState('add'); // 'add' or 'edit'
+const DNSRecordForm = ({ selectedFormData }) => {
+  const [formData, setFormData] = useState([{ Name: '', Type: '', TTL: '', routing_policy: '', ResourceRecords: '' }]);
+  const [mode, setMode] = useState('add');
   const navigate = useNavigate();
-  const params = useParams();
-  const location = useLocation();
 
-  // Function to handle form field changes
-  // const handleChange = (e, index) => {
-  //   const { name, value } = e.target;
-  //   const updatedRecords = [...formData.records];
-  //   updatedRecords[index] = { ...updatedRecords[index], [name]: value };
-  //   setFormData({ ...formData, records: updatedRecords });
-  // };
-// Function to handle form field changes
-const handleChange = (e, index) => {
-  console.log('here : ');
-  console.log(" e: ",e);
-  const { name, value } = e.target;
-  console.log(" name: ", name , " --", " value : ",value);
-  const updatedRecords = [...formData.records];
-  updatedRecords[index] = { ...updatedRecords[index], [name]: value };
-  console.log(" updated: ",updatedRecords);
-  setFormData(prevState => ({
-    ...prevState,
-    records: updatedRecords
-  }));
-};
+  const handleChange = (e, index) => {
+    const { name, value } = e.target;
+    const updatedRecords = [...formData];
+    updatedRecords[index] = { ...updatedRecords[index], [name]: value };
+    setFormData(updatedRecords);
+    console.log(" C2",updatedRecords);
+  };
 
-
-  // Function to handle form submission
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Perform form submission based on mode (add or edit)
+    const url = mode === 'add' ? '/api/addRecord' : '/api/editRecord';
+    let requestBody;
+
+    // Convert ResourceRecords string to array of objects only for POST request
     if (mode === 'add') {
-      // Handle adding DNS record
-      console.log('Adding DNS record:', formData);
-    } else if (mode === 'edit') {
-      // Handle editing DNS record
-      console.log('Editing DNS record:', formData);
+      requestBody = formData.map(record => ({
+        ...record,
+        ResourceRecords: record.ResourceRecords.split(/\s+/).map(value => ({ Value: value }))
+      }));
+    } else {
+      // For edit mode, keep the existing data structure
+      requestBody = formData;
     }
-    // Reset form fields
-    setFormData({
-      domain: '',
-      records: [{ type: '', value: '', ttl: '' }] // Reset with a single record entry
-    });
-    // Redirect to home page after form submission
-    navigate('/');
+
+    fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    })
+      .then(response => response.json())
+      .then(data => {
+        console.log('Response:', data);
+        // Navigate or perform any other action upon successful response
+        navigate('/');
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        // Handle error scenarios
+      });
   };
 
   useEffect(() => {
-    if (params.id && location.state) {
-      const { state } = location;
-      if (state.name && state.records && state.records.length > 0) {
-        setFormData({
-          domain: state.name || '',
-          records: state.records || [] // Set records from state
-        });
-        setMode('edit');
-      }
+    if (selectedFormData?.length) {
+      setFormData(selectedFormData);
+      setMode('edit');
     }
-  }, [params.id, location.state]);
+  }, [selectedFormData]);
 
-  // Function to add a new record field
   const addRecordField = () => {
-    setFormData({
-      ...formData,
-      records: [...formData.records, { type: '', value: '', ttl: '' }]
-    });
+    setFormData([...formData, { Name: '', Type: '', TTL: '', routing_policy: '', ResourceRecords: '' }]);
+  };
+
+  const removeRecordField = (index) => {
+    const updatedRecords = formData.filter((record, i) => i !== index);
+    setFormData(updatedRecords);
+  };
+
+  const getRecordValue = (record) => {
+    if (!record || !record.ResourceRecords) return '';
+    return record.ResourceRecords.map(item => item.Value).join('\n');
   };
 
   return (
-    <div className="my-8">
+    <div className="my-8 mx-auto max-w-lg dns-form pr-3">
       <h2 className="text-xl font-semibold mb-4">{mode === 'add' ? 'Add' : 'Edit'} DNS Record</h2>
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Form inputs */}
-        <input type="text" name="domain" value={formData.domain} onChange={(e) => setFormData({ ...formData, domain: e.target.value })} placeholder="Domain" className="border border-gray-300 rounded-md px-3 py-2" />
-        {formData.records.map((record, index) => (
-          <div key={index}>
-            <input type="text" name={`type`} value={record.type} onChange={(e) => handleChange(e, index)} placeholder="Record Type" className="border border-gray-300 rounded-md px-3 py-2" />
-            <input type="text" name={`value`} value={record.value} onChange={(e) => handleChange(e, index)} placeholder="Record Value" className="border border-gray-300 rounded-md px-3 py-2" />
-            <input type="number" name={`ttl`} value={record.ttl} onChange={(e) => handleChange(e, index)} placeholder="TTL" className="border border-gray-300 rounded-md px-3 py-2" />
+        {formData.map((record, index) => (
+          <div key={index} className="flex flex-wrap mb-6">
+            {index > 0 && (
+              <button type="button" onClick={() => removeRecordField(index)} className="pr-2 pb-2 text-red-600 ml-auto focus:outline-none">
+                <FiX />
+              </button>
+            )}
+            <div className="flex">
+              <input type="text" name={`Name`} value={record.Name} onChange={(e) => handleChange(e, index)} placeholder="Record Name" className="input-field mb-2 mr-2 lg:mb-0" />
+              {mode === 'add' ? (
+                <DropdownDivider onChange={(e) => handleChange(e, index)} />
+              ) : (
+                <input type="text" name={`Type`} value={record.Type} onChange={(e) => handleChange(e, index)} placeholder="Record Type" className="input-field mb-2 mr-2 lg:mb-0" />
+              )}
+
+            </div>
+            <textarea name={`ResourceRecords`} value={mode === 'edit' && getRecordValue(record) || record.ResourceRecords} onChange={(e) => handleChange(e, index)} placeholder="ResourceRecords" className="input-field mb-2 mr-2 lg:mb-0" />
+            <div className='flex'>
+              <input type="text" name={`TTL`} value={record.TTL} onChange={(e) => handleChange(e, index)} placeholder="TTL" className="input-field mb-2 mr-2 lg:mb-0" />
+              <input type="text" name={`routing_policy`} value={record.routing_policy} onChange={(e) => handleChange(e, index)} placeholder="Routing Policy" className="input-field mb-2 mr-2 lg:mb-0" />
+            </div>
           </div>
         ))}
-        {mode === 'add' && (
-          <button type="button" onClick={addRecordField} className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">Add Record</button>
-        )}
-        <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">Save</button>
+        <div className='flex justify-between'>
+          {mode === 'add' && (
+            <button type="button" onClick={addRecordField} className="button-primary">Add Record</button>
+          )}
+          <button type="submit" className="button-primary">Save</button>
+        </div>
       </form>
     </div>
   );
