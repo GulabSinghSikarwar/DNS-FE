@@ -17,8 +17,8 @@ export const getAllHostedZoneRecord= async(id)=>{
     return data;
 }
 
-export const createRecord = async (reqBody) => {
-    const url = applicationUrls.loginUrl
+export const createHostedZoneRecord = async (id,reqBody) => {
+    const url = applicationUrls.hostedZoneRecords(id)
     const reqParams = getRequestParams(reqBody, 'POST');
     const response = await fetch(url, reqParams)
     return response;

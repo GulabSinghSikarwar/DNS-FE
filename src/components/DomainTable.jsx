@@ -7,19 +7,18 @@ import Modal from './Modal'; // Import your Modal component
 import DNSRecordForm from './DNSRecordForm';
 import './DomainTable.css';
 
-const DomainTable = () => {
+const DomainTable = ({updateDomainName}) => {
   const [domainRecords, setDomainRecords] = useState([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState(null);
+  const [domainName, setDomainName] = useState('');
   const params = useParams();
 
   useEffect(() => {
     // Simulating fetching data from API
     const fetchData = async () => {
       try {
-        // const response = await getAllHostedZoneRecord(params.zoneId);
-        // setDomainRecords(response);
-        setDomainRecords([
+        const data = [
           {
             "Name": "hllowan2gulab.com.",
             "Type": "NS",
@@ -39,14 +38,30 @@ const DomainTable = () => {
               { "Value": "ns-154.awsdns-19.com. awsdns-hostmaster.amazon.com. 1 7200 900 1209600 86400" }
             ]
           }
-        ]);
+        ];
+
+        // Check if data is not empty
+        if (data.length > 0) {
+          extractDomainName(data[0].Name);
+          setDomainRecords(data);
+          return data
+          // Set domainName only if data has at least one record
+        }
       } catch (error) {
         console.error('Error fetching domain records:', error);
       }
     };
 
-    fetchData();
+    fetchData() 
   }, [params.zoneId]);
+
+  function extractDomainName(str) {
+    const regex = /(?:\w+\.)?(\w+\.\w+)/;
+    const match = str.match(regex);
+    const value = match ? match[1] : null;
+    setDomainName(value);
+    updateDomainName(value)
+  }
 
   const modifyDNS = (record) => {
     setSelectedRecord([record]);
@@ -57,6 +72,10 @@ const DomainTable = () => {
     setModalOpen(false);
     setSelectedRecord(null);
   };
+  const test = () => {
+    console.log("....domain..", domainName);
+    return domainName
+  }
 
   return (
     <div className="overflow-x-auto">
@@ -105,9 +124,9 @@ const DomainTable = () => {
           )}
         </tbody>
       </table>
-      <Modal isOpen={modalOpen} onClose={handleModalClose}>
-        <DNSRecordForm selectedFormData={selectedRecord} closeModal={handleModalClose} />
-      </Modal>
+      {domainName !== undefined && domainName !== null && test() && <Modal isOpen={modalOpen} onClose={handleModalClose}>
+        {domainName !== null && domainName && <DNSRecordForm selectedFormData={selectedRecord} closeModal={handleModalClose} domainName={domainName} />}
+      </Modal>}
     </div>
   );
 };

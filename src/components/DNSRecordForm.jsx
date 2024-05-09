@@ -1,58 +1,76 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { FiX } from 'react-icons/fi'; // Import FiX icon
 import './DNSForm.css'; // Import CSS file
 import DropdownDivider from '../utils/DropDown'; // Import DropdownDivider component
+import { createHostedZoneRecord } from '../service/hostedZone';
+import { toast, ToastContainer } from 'react-toastify';
+import { RECORD_SUCCESSFULLY_SAVED, SOMETHIN_WENT_WRONG } from '../utils/messages.string';
 
-const DNSRecordForm = ({ selectedFormData }) => {
+const DNSRecordForm = ({ selectedFormData, domainName }) => {
+
   const [formData, setFormData] = useState([{ Name: '', Type: '', TTL: '', routing_policy: '', ResourceRecords: '' }]);
   const [mode, setMode] = useState('add');
   const navigate = useNavigate();
+  const params = useParams()
+  const [domainname, setDomainname] = useState()
 
   const handleChange = (e, index) => {
     const { name, value } = e.target;
     const updatedRecords = [...formData];
     updatedRecords[index] = { ...updatedRecords[index], [name]: value };
     setFormData(updatedRecords);
-    console.log(" C2",updatedRecords);
+    console.log(" C2", updatedRecords);
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    // Append domainName to each Name field before making the API call
+    const updatedFormData = formData.map(record => ({
+      ...record,
+      Name: `${record.Name}.${domainName}`
+    }));
+
     const url = mode === 'add' ? '/api/addRecord' : '/api/editRecord';
     let requestBody;
 
     // Convert ResourceRecords string to array of objects only for POST request
     if (mode === 'add') {
-      requestBody = formData.map(record => ({
+      requestBody = updatedFormData.map(record => ({
         ...record,
         ResourceRecords: record.ResourceRecords.split(/\s+/).map(value => ({ Value: value }))
       }));
     } else {
       // For edit mode, keep the existing data structure
-      requestBody = formData;
+      requestBody = updatedFormData;
     }
 
-    fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestBody),
-    })
+    console.log('Request Body:', requestBody);
+
+    createHostedZoneRecord(params.zoneId, requestBody)
       .then(response => response.json())
       .then(data => {
-        console.log('Response:', data);
+        if (data.error) {
+          toast.error(data.error)
+        } else {
+
+          toast.success(RECORD_SUCCESSFULLY_SAVED)
+        }
         // Navigate or perform any other action upon successful response
-        navigate('/');
       })
       .catch(error => {
-        console.error('Error:', error);
+        toast.error(SOMETHIN_WENT_WRONG)
         // Handle error scenarios
       });
   };
 
   useEffect(() => {
+    if (domainName) {
+      console.log("dom: ", domainName);
+      setDomainname(domainName);
+
+    }
     if (selectedFormData?.length) {
       setFormData(selectedFormData);
       setMode('edit');
@@ -85,7 +103,7 @@ const DNSRecordForm = ({ selectedFormData }) => {
               </button>
             )}
             <div className="flex">
-              <input type="text" name={`Name`} value={record.Name} onChange={(e) => handleChange(e, index)} placeholder="Record Name" className="input-field mb-2 mr-2 lg:mb-0" />
+              <input type="text" name={`Name`} value={record.Name} onChange={(e) => handleChange(e, index)} placeholder="Record Name" className="input-field mb-2 mr-2 lg:mb-0" required />
               {mode === 'add' ? (
                 <DropdownDivider onChange={(e) => handleChange(e, index)} />
               ) : (
@@ -107,6 +125,18 @@ const DNSRecordForm = ({ selectedFormData }) => {
           <button type="submit" className="button-primary">Save</button>
         </div>
       </form>
+      <ToastContainer
+        position="bottom-right"
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="dark"
+      />
     </div>
   );
 };
