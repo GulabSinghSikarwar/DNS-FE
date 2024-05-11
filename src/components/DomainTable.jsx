@@ -19,17 +19,7 @@ const DomainTable = ({updateDomainName}) => {
     const fetchData = async () => {
       try {
         const data = [
-          {
-            "Name": "hllowan2gulab.com.",
-            "Type": "NS",
-            "TTL": 172800,
-            "ResourceRecords": [
-              { "Value": "ns-154.awsdns-19.com." },
-              { "Value": "ns-1009.awsdns-62.net." },
-              { "Value": "ns-1369.awsdns-43.org." },
-              { "Value": "ns-1979.awsdns-55.co.uk." }
-            ]
-          },
+         
           {
             "Name": "hllowan2gulab.com.",
             "Type": "SOA",
