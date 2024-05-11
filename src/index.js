@@ -3,15 +3,19 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
-import { RouterProvider } from 'react-router-dom';
+import { Outlet, RouterProvider } from 'react-router-dom';
 import router from './routers/routes';
+import { AuthContext, AuthProvider } from './service/authContext';
+import 'react-toastify/dist/ReactToastify.css';
+
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
-    <RouterProvider router={router}>
 
-      <App />
-    </RouterProvider>
+    <AuthProvider>
+      
+      <RouterProvider router={router} />
+    </AuthProvider>
   </React.StrictMode>
 );
 
