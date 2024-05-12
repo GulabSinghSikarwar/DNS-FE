@@ -1,4 +1,4 @@
-export const url = 'http://localhost:8000'
+export const url = 'http://18.207.236.100:8000'
 
 export const tableColumn = {
     hostedZoneRecords: {
