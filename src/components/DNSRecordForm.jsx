@@ -1,61 +1,92 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { FiX } from 'react-icons/fi'; // Import FiX icon
 import './DNSForm.css'; // Import CSS file
 import DropdownDivider from '../utils/DropDown'; // Import DropdownDivider component
+import { createHostedZoneRecord } from '../service/hostedZone';
+import { toast, ToastContainer } from 'react-toastify';
+import { RECORD_SUCCESSFULLY_SAVED, SOMETHIN_WENT_WRONG } from '../utils/messages.string';
 
-const DNSRecordForm = ({ selectedFormData }) => {
+const DNSRecordForm = ({ selectedFormData, domainName }) => {
+
   const [formData, setFormData] = useState([{ Name: '', Type: '', TTL: '', routing_policy: '', ResourceRecords: '' }]);
   const [mode, setMode] = useState('add');
   const navigate = useNavigate();
+  const params = useParams()
+  const [domainname, setDomainname] = useState()
 
   const handleChange = (e, index) => {
     const { name, value } = e.target;
     const updatedRecords = [...formData];
     updatedRecords[index] = { ...updatedRecords[index], [name]: value };
     setFormData(updatedRecords);
-    console.log(" C2",updatedRecords);
+    console.log(" C2", updatedRecords);
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const url = mode === 'add' ? '/api/addRecord' : '/api/editRecord';
+
+    // Append domainName to each Name field before making the API call
+    const updatedFormData = formData.map(record => ({
+      ...record,
+      Name: `${record.Name}.${domainName}`
+    }));
+
     let requestBody;
 
     // Convert ResourceRecords string to array of objects only for POST request
-    if (mode === 'add') {
-      requestBody = formData.map(record => ({
-        ...record,
-        ResourceRecords: record.ResourceRecords.split(/\s+/).map(value => ({ Value: value }))
-      }));
-    } else {
-      // For edit mode, keep the existing data structure
-      requestBody = formData;
-    }
 
-    fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestBody),
-    })
+    requestBody = updatedFormData.map(record => ({
+      ...record,
+      ResourceRecords: record.ResourceRecords
+        .split(/\s+/)
+        .filter(value => value.trim() !== '') // Filter out empty values
+        .map(value => ({ Value: value }))
+    }));
+
+    let method = 'PUT'
+    if (mode === 'add') {
+      method = 'POST'
+    }
+    console.log('Request Body:', requestBody);
+
+    createHostedZoneRecord(params.zoneId, requestBody,method)
       .then(response => response.json())
       .then(data => {
-        console.log('Response:', data);
+        if (data.error) {
+          toast.error(data.error)
+        } else {
+
+          toast.success(RECORD_SUCCESSFULLY_SAVED)
+        }
         // Navigate or perform any other action upon successful response
-        navigate('/');
       })
       .catch(error => {
-        console.error('Error:', error);
+        toast.error(SOMETHIN_WENT_WRONG)
         // Handle error scenarios
       });
   };
 
   useEffect(() => {
+
+    if (domainName) {
+      console.log("dom: ", domainName);
+      setDomainname(domainName);
+
+    }
+
     if (selectedFormData?.length) {
-      setFormData(selectedFormData);
-      setMode('edit');
+      console.log("select: ", selectedFormData);
+      if (!(mode === 'edit' && formData[0].ResourceRecords.length > 0)) {
+
+        const selectedData = {
+          Name: getSubdomain(selectedFormData[0].Name), Type: selectedFormData[0].Type, TTL: selectedFormData[0].TTL, routing_policy: '', ResourceRecords: selectedFormData[0].ResourceRecords
+        }
+        // selectedData.ResourceRecords=selectedData.r.replace(/,/g, '');
+
+        setFormData([{ ...selectedData }]);
+        setMode('edit');
+      }
     }
   }, [selectedFormData]);
 
@@ -68,11 +99,23 @@ const DNSRecordForm = ({ selectedFormData }) => {
     setFormData(updatedRecords);
   };
 
-  const getRecordValue = (record) => {
-    if (!record || !record.ResourceRecords) return '';
-    return record.ResourceRecords.map(item => item.Value).join('\n');
-  };
+  // const getRecordValue = (record) => {
+  //   console.log("record : ",record);
 
+  //   if (!record || !record.ResourceRecords) return '';
+  //    const value = record.ResourceRecords.map(item => item.Value).join('\n');
+  //    console.log(" return value : ", value , " resuorce : ",record.ResourceRecords); 
+  //    return value
+  //  };
+
+  function getSubdomain(str) {
+    // Split on "." and reverse the order (subdomain is typically at the beginning)
+    const parts = str.split(".");
+    const remainingParts = parts[parts.length - 4]
+    if (!remainingParts)
+      return '';
+    return remainingParts;
+  }
   return (
     <div className="my-8 mx-auto max-w-lg dns-form pr-3">
       <h2 className="text-xl font-semibold mb-4">{mode === 'add' ? 'Add' : 'Edit'} DNS Record</h2>
@@ -85,7 +128,7 @@ const DNSRecordForm = ({ selectedFormData }) => {
               </button>
             )}
             <div className="flex">
-              <input type="text" name={`Name`} value={record.Name} onChange={(e) => handleChange(e, index)} placeholder="Record Name" className="input-field mb-2 mr-2 lg:mb-0" />
+              <input type="text" name={`Name`} value={record.Name} onChange={(e) => handleChange(e, index)} placeholder="Record Name" className="input-field mb-2 mr-2 lg:mb-0" required />
               {mode === 'add' ? (
                 <DropdownDivider onChange={(e) => handleChange(e, index)} />
               ) : (
@@ -93,7 +136,7 @@ const DNSRecordForm = ({ selectedFormData }) => {
               )}
 
             </div>
-            <textarea name={`ResourceRecords`} value={mode === 'edit' && getRecordValue(record) || record.ResourceRecords} onChange={(e) => handleChange(e, index)} placeholder="ResourceRecords" className="input-field mb-2 mr-2 lg:mb-0" />
+            <textarea name={`ResourceRecords`} value={record.ResourceRecords} onChange={(e) => handleChange(e, index)} placeholder="ResourceRecords" className="input-field mb-2 mr-2 lg:mb-0" />
             <div className='flex'>
               <input type="text" name={`TTL`} value={record.TTL} onChange={(e) => handleChange(e, index)} placeholder="TTL" className="input-field mb-2 mr-2 lg:mb-0" />
               <input type="text" name={`routing_policy`} value={record.routing_policy} onChange={(e) => handleChange(e, index)} placeholder="Routing Policy" className="input-field mb-2 mr-2 lg:mb-0" />
@@ -107,6 +150,18 @@ const DNSRecordForm = ({ selectedFormData }) => {
           <button type="submit" className="button-primary">Save</button>
         </div>
       </form>
+      <ToastContainer
+        position="bottom-right"
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="dark"
+      />
     </div>
   );
 };

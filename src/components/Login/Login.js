@@ -6,10 +6,13 @@ import { storageHelper } from '../../utils/storage';
 import { messageColor } from '../../utils/utils';
 import { ToastContainer, toast } from 'react-toastify';
 import { validateToken } from '../../service/auth.service';
+import { useContext } from 'react';
+import { AuthContext } from '../../service/authContext';
 function LoginForm({ onLogin }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const navigate = useNavigate();
+  const authContext =useContext(AuthContext)
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -33,7 +36,9 @@ function LoginForm({ onLogin }) {
 
         // Set the token in local storage
         storageHelper.token = token
-        // toast.success("Succfully Login")
+        authContext.setAuth(true);
+        
+        toast.success("Succfully Login")
         navigate('/');
       } else {
         // Handle error response

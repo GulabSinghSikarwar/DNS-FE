@@ -11,11 +11,18 @@ const Dashboard = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({}); // For passing data to DNSRecordForm
 
+  const [domainName,setDomainName] =useState()
+
   // Function to handle opening and closing the modal
   const handleModalToggle = () => {
     setIsModalOpen(!isModalOpen);
     setFormData({ mode: 'add' }); // Set mode for adding new record by default
   };
+
+  const updateDomainName=(domainName)=>{
+
+    setDomainName(domainName)
+  }
 
   // Function to handle editing existing records
   const handleEditRecord = (domain) => {
@@ -36,6 +43,7 @@ const Dashboard = () => {
     handleCloseModal(); // Close modal after uploading file
   };
 
+  
   return (
     <div className="mx-auto">
       <Navbar />
@@ -46,9 +54,9 @@ const Dashboard = () => {
         </button>
         <FileUploadButton onSubmit={handleFileUpload} />
       </div>
-      <DomainTable handleEditRecord={handleEditRecord} />
+      <DomainTable handleEditRecord={handleEditRecord} updateDomainName={updateDomainName} />
       <Modal isOpen={isModalOpen} onClose={handleCloseModal}>
-        <DNSRecordForm formData={formData} closeModal={handleCloseModal} />
+        <DNSRecordForm formData={formData} closeModal={handleCloseModal} domainName={domainName} />
       </Modal>
     </div>
   );
