@@ -32,23 +32,25 @@ const DNSRecordForm = ({ selectedFormData, domainName }) => {
       Name: `${record.Name}.${domainName}`
     }));
 
-    const url = mode === 'add' ? '/api/addRecord' : '/api/editRecord';
     let requestBody;
 
     // Convert ResourceRecords string to array of objects only for POST request
-    if (mode === 'add') {
-      requestBody = updatedFormData.map(record => ({
-        ...record,
-        ResourceRecords: record.ResourceRecords.split(/\s+/).map(value => ({ Value: value }))
-      }));
-    } else {
-      // For edit mode, keep the existing data structure
-      requestBody = updatedFormData;
-    }
 
+    requestBody = updatedFormData.map(record => ({
+      ...record,
+      ResourceRecords: record.ResourceRecords
+        .split(/\s+/)
+        .filter(value => value.trim() !== '') // Filter out empty values
+        .map(value => ({ Value: value }))
+    }));
+
+    let method = 'PUT'
+    if (mode === 'add') {
+      method = 'POST'
+    }
     console.log('Request Body:', requestBody);
 
-    createHostedZoneRecord(params.zoneId, requestBody)
+    createHostedZoneRecord(params.zoneId, requestBody,method)
       .then(response => response.json())
       .then(data => {
         if (data.error) {
@@ -66,14 +68,25 @@ const DNSRecordForm = ({ selectedFormData, domainName }) => {
   };
 
   useEffect(() => {
+
     if (domainName) {
       console.log("dom: ", domainName);
       setDomainname(domainName);
 
     }
+
     if (selectedFormData?.length) {
-      setFormData(selectedFormData);
-      setMode('edit');
+      console.log("select: ", selectedFormData);
+      if (!(mode === 'edit' && formData[0].ResourceRecords.length > 0)) {
+
+        const selectedData = {
+          Name: getSubdomain(selectedFormData[0].Name), Type: selectedFormData[0].Type, TTL: selectedFormData[0].TTL, routing_policy: '', ResourceRecords: selectedFormData[0].ResourceRecords
+        }
+        // selectedData.ResourceRecords=selectedData.r.replace(/,/g, '');
+
+        setFormData([{ ...selectedData }]);
+        setMode('edit');
+      }
     }
   }, [selectedFormData]);
 
@@ -86,11 +99,23 @@ const DNSRecordForm = ({ selectedFormData, domainName }) => {
     setFormData(updatedRecords);
   };
 
-  const getRecordValue = (record) => {
-    if (!record || !record.ResourceRecords) return '';
-    return record.ResourceRecords.map(item => item.Value).join('\n');
-  };
+  // const getRecordValue = (record) => {
+  //   console.log("record : ",record);
 
+  //   if (!record || !record.ResourceRecords) return '';
+  //    const value = record.ResourceRecords.map(item => item.Value).join('\n');
+  //    console.log(" return value : ", value , " resuorce : ",record.ResourceRecords); 
+  //    return value
+  //  };
+
+  function getSubdomain(str) {
+    // Split on "." and reverse the order (subdomain is typically at the beginning)
+    const parts = str.split(".");
+    const remainingParts = parts[parts.length - 4]
+    if (!remainingParts)
+      return '';
+    return remainingParts;
+  }
   return (
     <div className="my-8 mx-auto max-w-lg dns-form pr-3">
       <h2 className="text-xl font-semibold mb-4">{mode === 'add' ? 'Add' : 'Edit'} DNS Record</h2>
@@ -111,7 +136,7 @@ const DNSRecordForm = ({ selectedFormData, domainName }) => {
               )}
 
             </div>
-            <textarea name={`ResourceRecords`} value={mode === 'edit' && getRecordValue(record) || record.ResourceRecords} onChange={(e) => handleChange(e, index)} placeholder="ResourceRecords" className="input-field mb-2 mr-2 lg:mb-0" />
+            <textarea name={`ResourceRecords`} value={record.ResourceRecords} onChange={(e) => handleChange(e, index)} placeholder="ResourceRecords" className="input-field mb-2 mr-2 lg:mb-0" />
             <div className='flex'>
               <input type="text" name={`TTL`} value={record.TTL} onChange={(e) => handleChange(e, index)} placeholder="TTL" className="input-field mb-2 mr-2 lg:mb-0" />
               <input type="text" name={`routing_policy`} value={record.routing_policy} onChange={(e) => handleChange(e, index)} placeholder="Routing Policy" className="input-field mb-2 mr-2 lg:mb-0" />
