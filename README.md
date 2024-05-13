@@ -1,9 +1,9 @@
 ### Steps To Setup Project 
 
-###### git clone https://github.com/GulabSinghSikarwar/DNS-FE.git
+###### 1) git clone https://github.com/GulabSinghSikarwar/DNS-FE.git
 
-###### cd DNS-FE
-###### npm i --legacy-peer-deps
-###### change the BE url in `constant.js` with `http://localhost:8000` (with your running backend host and port)
-###### `npm start`
+###### 2) cd DNS-FE
+###### 3) npm i --legacy-peer-deps
+###### 4) change the BE url in `constant.js` with `http://localhost:8000` (with your running backend host and port)
+###### 5) `npm start`
  
